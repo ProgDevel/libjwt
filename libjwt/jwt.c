@@ -70,22 +70,6 @@ static int jwt_str_alg(jwt_t *jwt, const char *alg)
 	return 0;
 }
 
-static int jwt_alg_block_size(jwt_alg_t alg)
-{
-	switch (alg) {
-	case JWT_ALG_NONE:
-		return 0;
-	case JWT_ALG_HS256:
-		return 32;
-	case JWT_ALG_HS384:
-		return 48;
-	case JWT_ALG_HS512:
-		return 64;
-	}
-
-	return -1; // LCOV_EXCL_LINE
-}
-
 static void jwt_scrub_key(jwt_t *jwt)
 {
 	if (jwt->key) {
@@ -100,25 +84,20 @@ static void jwt_scrub_key(jwt_t *jwt)
 	jwt->alg = JWT_ALG_NONE;
 }
 
-int jwt_set_alg(jwt_t *jwt, jwt_alg_t alg, unsigned char *key, int len)
+int jwt_set_alg(jwt_t *jwt, jwt_alg_t alg, unsigned char *key, int key_len)
 {
-	int key_len = jwt_alg_block_size(alg);
-
 	/* No matter what happens here, we do this. */
 	jwt_scrub_key(jwt);
 
 	switch (alg) {
 	case JWT_ALG_NONE:
-		if (key || len)
+		if (key || key_len)
 			return EINVAL;
 		break;
 
 	case JWT_ALG_HS256:
 	case JWT_ALG_HS384:
 	case JWT_ALG_HS512:
-		if (!key || len != key_len)
-			return EINVAL;
-
 		jwt->key = malloc(key_len);
 		if (!jwt->key) {
 			return ENOMEM; // LCOV_EXCL_LINE
@@ -365,9 +344,7 @@ static int jwt_verify_head(jwt_t *jwt, char *head)
 			ret = EINVAL;
 
 		if (jwt->key) {
-			len = jwt_alg_block_size(jwt->alg);
-			if (len != jwt->key_len)
-				ret = EINVAL;
+			len = jwt->key_len;
 		} else {
 			jwt_scrub_key(jwt);
 		}
