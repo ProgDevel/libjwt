@@ -38,6 +38,12 @@ typedef enum jwt_alg {
 	JWT_ALG_HS512
 } jwt_alg_t;
 
+typedef enum jwt_dump_fmt {
+    JWT_DUMP_FMT_NORMAL     = 0,
+    JWT_DUMP_FMT_PRETTY     = 1,
+    JWT_DUMP_FMT_BODY       = 1 << 1
+} jwt_dump_fmt_t;
+
 /**
  * @defgroup jwt_new JWT Object Creation
  * Functions used to create and destroy JWT objects.
@@ -196,7 +202,7 @@ int jwt_add_grants_json(jwt_t *jwt, const char *json);
  *     used for debugging.
  * @return Returns 0 on success, valid errno otherwise.
  */
-int jwt_dump_fp(jwt_t *jwt, FILE *fp, int pretty);
+int jwt_dump_fp(jwt_t *jwt, FILE *fp, jwt_dump_fmt_t fmt);
 
 /**
  * Return plain text representation as a string.
@@ -210,7 +216,9 @@ int jwt_dump_fp(jwt_t *jwt, FILE *fp, int pretty);
  * @return A nul terminated string on success, NULL on error with errno
  *     set appropriately.
  */
-char *jwt_dump_str(jwt_t *jwt, int pretty);
+char *jwt_dump_str(jwt_t *jwt, jwt_dump_fmt_t fmt);
+
+char *jwt_body_str(jwt_t *jwt);
 
 /**
  * Fully encode a JWT object and write it to FILE.

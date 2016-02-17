@@ -70,7 +70,7 @@ static int jwt_str_alg(jwt_t *jwt, const char *alg)
 	return 0;
 }
 
-static int jwt_alg_key_len(jwt_alg_t alg)
+static int jwt_alg_block_size(jwt_alg_t alg)
 {
 	switch (alg) {
 	case JWT_ALG_NONE:
@@ -102,7 +102,7 @@ static void jwt_scrub_key(jwt_t *jwt)
 
 int jwt_set_alg(jwt_t *jwt, jwt_alg_t alg, unsigned char *key, int len)
 {
-	int key_len = jwt_alg_key_len(alg);
+	int key_len = jwt_alg_block_size(alg);
 
 	/* No matter what happens here, we do this. */
 	jwt_scrub_key(jwt);
@@ -365,7 +365,7 @@ static int jwt_verify_head(jwt_t *jwt, char *head)
 			ret = EINVAL;
 
 		if (jwt->key) {
-			len = jwt_alg_key_len(jwt->alg);
+			len = jwt_alg_block_size(jwt->alg);
 			if (len != jwt->key_len)
 				ret = EINVAL;
 		} else {
@@ -634,14 +634,20 @@ static void jwt_write_bio_body(jwt_t *jwt, BIO *bio, int pretty)
 	BIO_flush(bio);
 }
 
-static void jwt_dump_bio(jwt_t *jwt, BIO *out, int pretty)
+static void jwt_dump_bio(jwt_t *jwt, BIO *out, jwt_dump_fmt_t fmt)
 {
-	jwt_write_bio_head(jwt, out, pretty);
-	BIO_puts(out, ".");
-	jwt_write_bio_body(jwt, out, pretty);
+        int pretty = (fmt & JWT_DUMP_FMT_PRETTY);
+        if ((fmt & JWT_DUMP_FMT_BODY)) {
+                jwt_write_bio_body(jwt, out, pretty);
+        }
+        else {
+                jwt_write_bio_head(jwt, out, pretty);
+	        BIO_puts(out, ".");
+                jwt_write_bio_body(jwt, out, pretty);
+        }
 }
 
-int jwt_dump_fp(jwt_t *jwt, FILE *fp, int pretty)
+int jwt_dump_fp(jwt_t *jwt, FILE *fp, jwt_dump_fmt_t fmt)
 {
 	BIO *bio;
 
@@ -649,14 +655,14 @@ int jwt_dump_fp(jwt_t *jwt, FILE *fp, int pretty)
 	if (!bio)
 		return ENOMEM;
 
-	jwt_dump_bio(jwt, bio, pretty);
+	jwt_dump_bio(jwt, bio, fmt);
 
 	BIO_free_all(bio);
 
 	return 0;
 }
 
-char *jwt_dump_str(jwt_t *jwt, int pretty)
+char *jwt_dump_str(jwt_t *jwt, jwt_dump_fmt_t fmt)
 {
 	BIO *bmem = BIO_new(BIO_s_mem());
 	char *out;
@@ -669,7 +675,7 @@ char *jwt_dump_str(jwt_t *jwt, int pretty)
 		// LCOV_EXCL_STOP
 	}
 
-	jwt_dump_bio(jwt, bmem, pretty);
+        jwt_dump_bio(jwt, bmem, fmt);
 
 	len = BIO_pending(bmem);
 	out = malloc(len + 1);
